@@ -65,10 +65,7 @@
 
 #### 策略网络：
 
-- 网络结构：
-
-  $`19 \times 19 \times 48 \rightarrow \mathrm{Conv}_{5 \times 5}(192) \rightarrow 11 \times \mathrm{Conv}_{3 \times 3}(192) \rightarrow \mathrm{Conv}_{1 \times 1}(1) \rightarrow \mathrm{Softmax}`$
-
+- $`19 \times 19 \times 48 \rightarrow \text{Conv}_{5 \times 5}(192) \rightarrow 11 \times \text{Conv}_{3 \times 3}(192) \rightarrow \text{Conv}_{1 \times 1}(1) \rightarrow \text{Softmax}`$
 - 对所有合法位置做 softmax，得到落子概率，本质上是分类模型
 - 没有池化层pooling：为了不改变 19×19 空间结构
 
@@ -76,14 +73,9 @@
 
 与策略网络前半部分相似，但只输出一个标量
 
-- 网络结构：
-
-  $`\text{卷积主干} \rightarrow \mathrm{Conv}_{1 \times 1} \rightarrow \mathrm{FC}(256) \rightarrow \tanh \rightarrow v_\theta(s)`$
-
+- 卷积主干 → 1×1卷积 → 全连接256 → tanh → $`v_θ​(s)`$
 - tanh：输出标量范围为 $`[-1, 1]`$，反应当前玩家胜率
-- 胜率可以近似为：
-
-  $`P(\mathrm{win} \mid s) = \frac{v+1}{2}`$
+- 胜率可以近似为：$`P(\text{win} \mid s) = \frac{v + 1}{2}`$
 
 #### 快速rollout策略网络
 
@@ -101,13 +93,8 @@
 #### 训练目标
 
 - 给定人类高手棋谱中的状态—动作对 $`(s, a)`$，让策略网络提高人类真实落子 $`a`$ 的概率
-- 参数更新方向：
-
-  $`\Delta \sigma \propto \nabla_\sigma \log p_\sigma(a \mid s)`$
-
-- 交叉熵损失：
-
-  $`L_{\mathrm{SL}} = -\log p_\sigma(a \mid s)`$
+- $`\Delta\sigma \propto \nabla_\sigma \log p_\sigma(a|s)`$
+- 损失为交叉熵：$`L_{\mathrm{SL}} = -\log p_\sigma(a|s)`$
 
 #### 数据与训练配置
 
@@ -146,14 +133,8 @@
 
 #### 策略梯度更新
 
-- 参数更新方向：
-
-  $`\Delta \rho \propto \nabla_\rho \log p_\rho(a_t \mid s_t) z_t`$
-
-- 最基本策略梯度（REINFORCE）：
-
-  $`\nabla_\rho J = \mathbb{E}\left[ \nabla_\rho \log \pi_\rho(a_t \mid s_t) G_t \right]`$
-
+- $`\Delta\rho \propto \nabla_\rho \log p_\rho(a_t|s_t) z_t`$
+- 最基本策略梯度损失（REINFORCE）：$`\nabla_\rho J = \mathbb{E}[\nabla_\rho \log \pi_\rho(a_t|s_t) G_t]`$
 - 围棋中没有中间奖励，所以 $`G_t = z_t`$
 - 本篇论文并不是现代意义上的 Actor-Critic：策略网络和价值网络是分阶段训练的
 - 第二轮训练时使用价值网络作为 baseline：$`A_t = z_t - v(s_t)`$，baseline 只减少方差，不改变策略梯度期望
@@ -174,24 +155,14 @@
 
 #### 价值网络的目标
 
-- 用于估计价值：
-
-  $`v^{p_\rho}(s) = \mathbb{E}\left[ z_t \mid s_t = s,\ a_{t:T} \sim p_\rho \right]`$
-
+- 用于估计价值：$`v^{p_\rho}(s) = \mathbb{E}[z_t \mid s_t = s, \, a_{t:T} \sim p_\rho]`$
 - 逼近 $`v^{p_\rho}(s)`$，不是严格意义上的最优价值 $`v^*(s)`$
-- 当 $`p_\rho`$ 足够强，有：
-
-  $`v_\theta(s) \approx v^{p_\rho}(s) \approx v^*(s)`$
+- 当 $`p_\rho`$ 足够强，有 $`v_\theta(s) \approx v^{p_\rho}(s) \approx v^*(s)`$
 
 #### 损失函数
 
-- 使用最终胜负 $`z \in \{-1, +1\}`$ 作为回归目标：
-
-  $`L_v(\theta) = \left(z - v_\theta(s)\right)^2`$
-
-- 梯度方向：
-
-  $`\Delta \theta \propto \left(z - v_\theta(s)\right)\nabla_\theta v_\theta(s)`$
+- 使用最终胜负 $`z \in \{-1, +1\}`$ 作为回归目标：$`L_v(\theta) = (z - v_\theta(s))^2`$
+- 梯度方向：$`\Delta\theta \propto (z - v_\theta(s)) \nabla_\theta v_\theta(s)`$
 
 #### 训练数据
 
@@ -211,29 +182,21 @@
 
 ## MCTS
 
-#### AlphaGo 的每条搜索树边存储
+#### AlphaGo 的每条搜索树边 (s,a) 存储：$`\{P, N_v, N_r, W_v, W_r, Q\}`$
 
-$`(s,a): \{P, N_v, N_r, W_v, W_r, Q\}`$
-
-- $`P(s,a)`$：策略网络给出的先验概率
-- $`N_v(s,a)`$：价值网络评估经过该边的次数
-- $`W_v(s,a)`$：价值网络评估结果之和
-- $`N_r(s,a)`$：Rollout 经过该边的次数
-- $`W_r(s,a)`$：Rollout 终局奖励之和
-- $`Q(s,a)`$：价值网络和 Rollout 混合后的动作价值
+- $`P(s,a)`$：策略网络给出的先验概率 
+- $`N_v(s,a)`$：价值网络评估经过该边的次数 
+- $`W_v(s,a)`$：价值网络评估结果之和 
+- $`N_r(s,a)`$：Rollout 经过该边的次数 
+- $`W_r(s,a)`$：Rollout 终局奖励之和 
+- $`Q(s,a)`$：价值网络和 Rollout 混合后的动作价值 
 
 一次 MCTS 模拟包含四个阶段：选择、扩展、评估、回传
 
 ### Selection：选择
 
-- 动作选择：
-
-  $`a_t = \underset{a}{\arg\max} \left[Q(s_t,a) + u(s_t,a)\right]`$
-
-- 探索项 PUCT：
-
-  $`u(s,a) = c_{\mathrm{puct}} P(s,a) \frac{\sqrt{\sum_b N_r(s,b)}}{1 + N_r(s,a)}`$
-
+- 动作选择：$`a_t = \arg\max_a \left[ Q(s_t,a) + u(s_t,a) \right]`$
+- 探索项 PUCT：$`u(s,a) = c_{\mathrm{puct}} P(s,a) \frac{\sqrt{\sum_b N_r(s,b)}}{1 + N_r(s,a)}`$
   - $`c_{\mathrm{puct}}`$：探索系数，论文中用5
   - 高先验概率更容易被探索：$`u(s,a) \propto P(s,a)`$
   - 总搜索次数越多，探索新分支的动力越大：$`u(s,a) \propto \sqrt{\sum_b N(s,b)}`$
@@ -244,53 +207,36 @@ $`(s,a): \{P, N_v, N_r, W_v, W_r, Q\}`$
 
 - 当某条边的访问次数超过阈值，就把其后继状态加入搜索树：$`N_r(s,a) > n_{\mathrm{thr}}`$，论文设置40
 - 新节点刚创建时，GPU 可能还没有完成深度策略网络推理，因此先用一个更快的 tree policy $`p_\tau`$ 提供临时先验
-- 异步 GPU 得到 $`p_\sigma`$ 后，再覆盖临时先验：
-
-  $`P(s',a) \leftarrow p_\sigma^\beta(a \mid s')`$
-
+- 异步 GPU 得到 $`p_\sigma`$ 后，再覆盖临时先验：$`P(s',a) \leftarrow p_\sigma^\beta(a|s')`$
   - 其中 softmax 温度：$`\beta = 0.67`$，较低温度会让高概率动作更突出
 
 ### Evaluation：评估
 
 - 价值网络评估：$`v_\theta(s_L)`$
 - 快速 rollout：从叶节点用快速策略 $`p_\pi`$ 下棋到终局得到 $`z_L \in \{-1, +1\}`$
-- 最终混合：
-
-  $`V(s_L) = (1 - \lambda)v_\theta(s_L) + \lambda z_L, \qquad \lambda = 0.5`$
+- 最终混合：$`V(s_L) = (1 - \lambda) v_\theta(s_L) + \lambda z_L`$，论文中用 $`\lambda = 0.5`$
 
 ### Backup：回传
 
 - 模拟结束后，将叶节点评价沿搜索路径向根节点回传
-  - 访问次数与平均动作价值：
-
-    $`\begin{aligned} N(s,a) &\leftarrow N(s,a) + 1, \\ Q(s,a) &= \frac{1}{N(s,a)}\sum_i V(s_L^i) \end{aligned}`$
-
-  - 增量更新：
-
-    $`Q_{\mathrm{new}} = Q_{\mathrm{old}} + \frac{V(s_L) - Q_{\mathrm{old}}}{N(s,a)}`$
-
-  - 完整表示：
-
-    $`Q(s,a) = (1-\lambda)\frac{W_v(s,a)}{N_v(s,a)} + \lambda\frac{W_r(s,a)}{N_r(s,a)}`$
-
+  - $`N(s,a) \leftarrow N(s,a) + 1`$
+  - $`Q(s,a) = \frac{1}{N(s,a)} \sum_i V(s_L^i)`$
+    - 实际是增量更新：$`Q_{\mathrm{new}} = Q_{\mathrm{old}} + \frac{V(s_L) - Q_{\mathrm{old}}}{N(s,a)}`$
+    - 完整表示：$`Q(s,a) = (1 - \lambda) \frac{W_v(s,a)}{N_v(s,a)} + \lambda \frac{W_r(s,a)}{N_r(s,a)}`$
   - 说明：这里的 $`Q(s,a)`$ 概念上是动作价值，但并不是DQN的Q值，也不是单独训练出来的 Critic，而是搜索模拟结果的经验均值
 
 ### Virtual Loss：虚拟损失
 
 - AlphaGo 使用多个 CPU 线程并行搜索，如果多个线程同时看到某条边最好，它们可能全部搜索同一个分支，导致并行资源浪费
 - 因此一个线程进入某条边时，临时假设它输了若干局：
-
-  $`\begin{aligned} N_r &\leftarrow N_r + n_{\mathrm{vl}}, \\ W_r &\leftarrow W_r - n_{\mathrm{vl}} \end{aligned}`$
-
+  - 增加次数：$`N_r \leftarrow N_r + n_{\mathrm{vl}}`$
+  - 降低奖励：$`W_r \leftarrow W_r - n_{\mathrm{vl}}`$
   - 论文设置 $`n_{\mathrm{vl}} = 3`$
   - 其他线程会暂时觉得该边价值下降，转向其他分支，模拟结束后再撤销虚拟损失并写入真实结果
 
 ### 最终动作选择：
 
-- 动作选择：
-
-  $`a^* = \underset{a}{\arg\max}\, N(s_{\mathrm{root}}, a)`$
-
+- 动作选择：$`a^* = \arg\max_a N(s_{\mathrm{root}}, a)`$
 - 不选Q值：少量访问的动作可能偶然得到非常高的 $`Q`$，属于统计离群值
 - 访问次数高：
   - 该动作有较好的先验概率
@@ -308,14 +254,14 @@ $`(s,a): \{P, N_v, N_r, W_v, W_r, Q\}`$
 
 ### 策略网络 Top-1 准确率
 
-$`\mathrm{Accuracy} = \frac{ \text{预测概率最大动作与人类动作相同的局面数} }{ \text{总局面数} }`$
+- $`\text{Accuracy} = \frac{\text{预测概率最大动作与人类动作相同的局面数}}{\text{总局面数}}`$
 - 网络**模仿人类高手落子**的能力，不直接代表是否会赢棋
 - 相同MCTS模拟次数的情况下准确率高，胜率更大
 - 实际对战有落子时间限制，准确率高但是响应慢导致模拟次数少，可能导致实力下降
 
 ### 价值网络 MSE
 
-$`\mathrm{MSE} = \frac{1}{N} \sum_i \left(v_\theta(s_i) - z_i\right)^2, \qquad z_i \in \{-1,+1\}`$
+- $`\mathrm{MSE} = \frac{1}{N} \sum_i \left(v_\theta(s_i) - z_i\right)^2`$，$`z \in \{-1, +1\}`$
 - 网络预测最终胜负结果的数值误差有多大
 - 实验报告
   - 开局时胜负本身很难确定，误差较大
@@ -336,6 +282,4 @@ $`\mathrm{MSE} = \frac{1}{N} \sum_i \left(v_\theta(s_i) - z_i\right)^2, \qquad z
 ### Elo 等级分
 
 - 通过内部循环赛，用 BayesElo 计算等级分
-- Elo**分差**对应胜率：
-
-  $`E_A = \frac{1}{1 + 10^{(R_B-R_A)/400}}, \qquad 230\text{ Elo 分差} \approx 79\%\text{ 胜率}`$
+- Elo**分差**对应胜率：$`E_A = \frac{1}{1 + 10^{(R_B - R_A) / 400}}`$，$`230\text{ Elo分差} \approx 79\%\text{胜率}`$
