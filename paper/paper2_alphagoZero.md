@@ -42,13 +42,13 @@ AlphaGo Zero 关键简化：
 
 AlphaGo Zero：
 
-- MCTS 根据网络给出的 $(p,v)$ 生成更强的搜索策略 $\pi$，相当于策略改进
-- 使用搜索策略进行自博弈，最终胜负 $z$ 用来评估该策略
-- 再把 $\pi$ 和 $z$ 压缩回神经网络
+- MCTS 根据网络给出的 $`(p,v)`$ 生成更强的搜索策略 $`\pi`$，相当于策略改进
+- 使用搜索策略进行自博弈，最终胜负 $`z`$ 用来评估该策略
+- 再把 $`\pi`$ 和 $`z`$ 压缩回神经网络
 
 $`p_\theta \xrightarrow{\text{MCTS 改进}} \pi \xrightarrow{\text{自博弈评估}} z \xrightarrow{\text{监督训练}} \left(p_{\theta'},v_{\theta'}\right)`$
 
-**注意**：$\pi$ 通常比 $p_\theta$ 更强，因为 $p_\theta$ 只经过一次神经网络前向传播，而 $\pi$ 综合了大量树搜索模拟结果。因此，MCTS 实际上充当了神经网络的“老师”
+**注意**：$`\pi`$ 通常比 $`p_\theta`$ 更强，因为 $`p_\theta`$ 只经过一次神经网络前向传播，而 $`\pi`$ 综合了大量树搜索模拟结果。因此，MCTS 实际上充当了神经网络的“老师”
 
 ### 网络设计
 
@@ -71,7 +71,7 @@ $`p_\theta \xrightarrow{\text{MCTS 改进}} \pi \xrightarrow{\text{自博弈评�
 
     $`x \rightarrow \mathrm{Conv}_{3 \times 3}(256) \rightarrow \mathrm{BN} \rightarrow \mathrm{ReLU} \rightarrow \mathrm{Conv}_{3 \times 3}(256) \rightarrow \mathrm{BN} \rightarrow +x \rightarrow \mathrm{ReLU}`$
 
-  - $+x$：表示**残差连接**或**跳跃连接**，$F(x) + x$
+  - $`+x`$：表示**残差连接**或**跳跃连接**，$`F(x) + x`$
   - 论文中：
     - 20-block 网络表示1个首卷积模块+19个残差块，约2280万参数
     - 40-block 网络表示39个残差块，约4640 万参数
@@ -79,12 +79,12 @@ $`p_\theta \xrightarrow{\text{MCTS 改进}} \pi \xrightarrow{\text{自博弈评�
 残差网络的优势：
 
 - 普通深层卷积网络容易出现：梯度消失、训练退化、层数增加但性能反而下降
-- 残差连接学习的是 $F(x) = H(x) - x$，输出 $H(x) = F(x) + x$，梯度可以沿跳跃连接传播，使几十层网络仍能稳定训练
+- 残差连接学习的是 $`F(x) = H(x) - x`$，输出 $`H(x) = F(x) + x`$，梯度可以沿跳跃连接传播，使几十层网络仍能稳定训练
 - **实验表明**：使用残差网络比普通卷积网络提高超过约 600 Elo
 
 共享主干优势：
 
-- 共享计算：一次主干前向传播同时产生 $p$ 和 $v$
+- 共享计算：一次主干前向传播同时产生 $`p`$ 和 $`v`$
 - 共享表示：落子选择和胜负判断都依赖棋形、连接等共同特征；
 - 多任务正则化：策略任务和价值任务互相约束，降低过拟合
 - **实验表明**：
@@ -97,7 +97,7 @@ $`p_\theta \xrightarrow{\text{MCTS 改进}} \pi \xrightarrow{\text{自博弈评�
 
   $`19 \times 19 \times 256 \rightarrow \mathrm{Conv}_{1 \times 1}(2) \rightarrow \mathrm{reshape}(19 \times 19 \times 2) \rightarrow \mathrm{FC}(362) \rightarrow \mathrm{Softmax}`$
 
-  - $\operatorname{reshape}(19 \times 19 \times 2)$ 表示把三维图像转化成一维向量
+  - $`\mathrm{reshape}(19 \times 19 \times 2)`$ 表示把三维图像转化成一维向量
   - 362输出：361个棋盘交叉点、1个pass（弃权本轮下棋）
   - 含义：在当前局面下，每个合法动作作为候选的**先验概率**，并不是最终直接使用的动作策略
 
@@ -107,19 +107,19 @@ $`p_\theta \xrightarrow{\text{MCTS 改进}} \pi \xrightarrow{\text{自博弈评�
 
   $`19 \times 19 \times 256 \rightarrow \mathrm{Conv}_{1 \times 1}(1) \rightarrow \mathrm{reshape}(19 \times 19 \times 1) \rightarrow \mathrm{FC}(256) \rightarrow \mathrm{FC}(1) \rightarrow \tanh`$
 
-  - 输出：$v \in [-1, 1]$，期望胜负
+  - 输出：$`v \in [-1, 1]`$，期望胜负
   - 胜率可以近似为：
 
     $`P(\mathrm{win} \mid s) = \frac{v+1}{2}`$
 
 ### MCTS 的架构设计
 
-每条搜索树边 $(s,a)$ 存储四个量：
+每条搜索树边 $`(s,a)`$ 存储四个量：
 
-- $P(s,a)$：策略网络给出的先验概率 
-- $N(s,a)$：该动作的访问次数 
-- $W(s,a)$：累计价值
-- $Q(s,a)$：平均动作价值，$Q = W/N$
+- $`P(s,a)`$：策略网络给出的先验概率
+- $`N(s,a)`$：该动作的访问次数
+- $`W(s,a)`$：累计价值
+- $`Q(s,a)`$：平均动作价值，$`Q = W/N`$
 
 AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
@@ -127,13 +127,13 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 #### Expand and Evaluate：扩展和评估
 
-- 当搜索到一个尚未展开的叶节点 $s_L$，只调用一次神经网络：
+- 当搜索到一个尚未展开的叶节点 $`s_L`$，只调用一次神经网络：
 
   $`\left(P(s_L,\cdot),v\right) = f_\theta(s_L)`$
 
-  - $P$ 初始化新节点所有动作的先验
-  - $v$ 用作该叶节点的价值
-  - 不再从该节点随机模拟到终局获取 $z$
+  - $`P`$ 初始化新节点所有动作的先验
+  - $`v`$ 用作该叶节点的价值
+  - 不再从该节点随机模拟到终局获取 $`z`$
 
 #### Backup回传：同ALphaGo论文
 
@@ -143,9 +143,9 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
   $`\pi(a \mid s) = \frac{N(s,a)^{1/\tau}} {\sum_b N(s,b)^{1/\tau}}`$
 
-  - $\tau$ 温度参数
-    - $\tau=1$：按访问次数比例采样，探索性较强
-    - $\tau=0$：近似选择访问次数最多的动作（AlphaGo的方法）
+  - $`\tau`$ 温度参数
+    - $`\tau=1`$：按访问次数比例采样，探索性较强
+    - $`\tau=0`$：近似选择访问次数最多的动作（AlphaGo的方法）
 
 ---
 
@@ -155,11 +155,11 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 #### 博弈数据采集
 
-每个局面保存一个训练样本：$(s_t, \pi_t, z_t)$
+每个局面保存一个训练样本：$`(s_t, \pi_t, z_t)`$
 
-- $s_t$：局面
-- $\pi_t$：该局面经过 MCTS 后的访问次数分布
-- $z_t$：整盘结束后，从时刻 $t$ 当前玩家视角得到的最终胜负
+- $`s_t`$：局面
+- $`\pi_t`$：该局面经过 MCTS 后的访问次数分布
+- $`z_t`$：整盘结束后，从时刻 $`t`$ 当前玩家视角得到的最终胜负
 - 八种对称变换扩展数据
 
 #### 损失函数
@@ -170,9 +170,9 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
   - **价值损失**：均方误差
   - **策略损失**：交叉熵
-    - $\top$ 表示将这个列向量（或行向量）进行转置
+    - $`\top`$ 表示将这个列向量（或行向量）进行转置
   - **L2正则化**：用于抑制过拟合
-    - 论文设置：$c = 10^{-4}$
+    - 论文设置：$`c = 10^{-4}`$
 
 #### 完整训练流水线
 
@@ -180,15 +180,15 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 1. **Self-play Generator**
 
-   当前最优模型 $\theta^*$ **自己与自己下棋**
+   当前最优模型 $`\theta^*`$ **自己与自己下棋**
 
    - 每一步：
      - 执行 1600 次 MCTS 模拟
-     - 得到访问次数分布 $\pi_t$，选择动作
-     - 保存 $(s_t, \pi_t)$，游戏结束后补上 $z_t$
+     - 得到访问次数分布 $`\pi_t`$，选择动作
+     - 保存 $`(s_t, \pi_t)`$，游戏结束后补上 $`z_t`$
    - 增加探索：
-     - 前 30 手设置 $\tau = 1$
-     - 30 手之后设置 $\tau \rightarrow 0$
+     - 前 30 手设置 $`\tau = 1`$
+     - 30 手之后设置 $`\tau \rightarrow 0`$
      - 根节点先验加入 Dirichlet 噪声：
 
        $`\begin{aligned} P'(s,a) &= (1-\varepsilon)p_a + \varepsilon\eta_a, \\ \eta &\sim \mathrm{Dir}(0.03), \qquad \varepsilon = 0.25 \end{aligned}`$
@@ -215,7 +215,7 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
    - 对局设置：
      - 每步 1600 次 MCTS
-     - $\tau \rightarrow 0$，使用确定性的最强下法
+     - $`\tau \rightarrow 0`$，使用确定性的最强下法
 
 #### 训练配置
 
@@ -241,7 +241,7 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
     - 说明神经网络本身已经很强，而 MCTS 又把它提升到了完全不同的棋力层级
 - Top-1 准确率：
   - AlphaGo Zero 低于 AlphaGo
-  - 说明：预测人类落子准确 $\neq$ 最终胜率最高
+  - 说明：预测人类落子准确 $`\neq`$ 最终胜率最高
 - 价值网络 MSE：
   - 40-block 与 20-block 差不多
   - 离线价值误差也不是最终棋力的完美代理指标
@@ -252,9 +252,9 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 | 维度 | 标准 Actor-Critic | AlphaGo Zero |
 | :--- | :--- | :--- |
-| **Actor (策略)** | 通常通过策略梯度优化 | Policy Head 用交叉熵模仿 MCTS ($\pi$) |
-| **Critic (价值)** | 常使用 TD / Bellman 目标 | Value Head 使用终局胜负 $z$ |
-| **行为策略** | 主要来自 Actor 自身 | 行为策略来自 MCTS 的 $\pi$ |
+| **Actor (策略)** | 通常通过策略梯度优化 | Policy Head 用交叉熵模仿 MCTS ($`\pi`$) |
+| **Critic (价值)** | 常使用 TD / Bellman 目标 | Value Head 使用终局胜负 $`z`$ |
+| **行为策略** | 主要来自 Actor 自身 | 行为策略来自 MCTS 的 $`\pi`$ |
 | **交互关系** | Critic 直接指导 Actor 更新 | Value 先指导搜索，搜索再生成策略目标 |
 | **环境模型** | 通常不需要显式模型 | MCTS 需要完整游戏规则和状态转移 |
 
