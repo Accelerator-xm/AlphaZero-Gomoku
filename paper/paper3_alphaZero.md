@@ -27,7 +27,7 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
     ```math
     s
     \rightarrow f_\theta(s) = (p,v)
-    \rightarrow \operatorname{MCTS}
+    \rightarrow \mathrm{MCTS}
     \rightarrow \pi(a \mid s)
     ```
 

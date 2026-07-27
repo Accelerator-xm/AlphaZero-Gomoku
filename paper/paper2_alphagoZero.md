@@ -75,7 +75,7 @@ z
   ```math
   19 \times 19 \times 17
   \rightarrow
-  \operatorname{Conv}_{3 \times 3}(256)
+  \mathrm{Conv}_{3 \times 3}(256)
   ```
 
 - 随后经过n个残差块
@@ -83,13 +83,13 @@ z
 
     ```math
     x
-    \rightarrow \operatorname{Conv}_{3 \times 3}(256)
-    \rightarrow \operatorname{BN}
-    \rightarrow \operatorname{ReLU}
-    \rightarrow \operatorname{Conv}_{3 \times 3}(256)
-    \rightarrow \operatorname{BN}
+      \rightarrow \mathrm{Conv}_{3 \times 3}(256)
+      \rightarrow \mathrm{BN}
+      \rightarrow \mathrm{ReLU}
+      \rightarrow \mathrm{Conv}_{3 \times 3}(256)
+      \rightarrow \mathrm{BN}
     \rightarrow +x
-    \rightarrow \operatorname{ReLU}
+      \rightarrow \mathrm{ReLU}
     ```
 
   - $+x$：表示**残差连接**或**跳跃连接**，$F(x) + x$
@@ -118,10 +118,10 @@ z
 
   ```math
   19 \times 19 \times 256
-  \rightarrow \operatorname{Conv}_{1 \times 1}(2)
-  \rightarrow \operatorname{reshape}(19 \times 19 \times 2)
-  \rightarrow \operatorname{FC}(362)
-  \rightarrow \operatorname{Softmax}
+  \rightarrow \mathrm{Conv}_{1 \times 1}(2)
+  \rightarrow \mathrm{reshape}(19 \times 19 \times 2)
+  \rightarrow \mathrm{FC}(362)
+  \rightarrow \mathrm{Softmax}
   ```
 
   - $\text{reshape}(19×19×2)$ 表示把三维图像转化成一维向量
@@ -134,10 +134,10 @@ z
 
   ```math
   19 \times 19 \times 256
-  \rightarrow \operatorname{Conv}_{1 \times 1}(1)
-  \rightarrow \operatorname{reshape}(19 \times 19 \times 1)
-  \rightarrow \operatorname{FC}(256)
-  \rightarrow \operatorname{FC}(1)
+  \rightarrow \mathrm{Conv}_{1 \times 1}(1)
+  \rightarrow \mathrm{reshape}(19 \times 19 \times 1)
+  \rightarrow \mathrm{FC}(256)
+  \rightarrow \mathrm{FC}(1)
   \rightarrow \tanh
   ```
 
@@ -145,7 +145,7 @@ z
   - 胜率可以近似为：
 
     ```math
-    P(\operatorname{win} \mid s) = \frac{v+1}{2}
+    P(\mathrm{win} \mid s) = \frac{v+1}{2}
     ```
 
 ### MCTS 的架构设计
@@ -250,7 +250,7 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
        ```math
        \begin{aligned}
        P'(s,a) &= (1-\varepsilon)p_a + \varepsilon\eta_a, \\
-       \eta &\sim \operatorname{Dir}(0.03),
+      \eta &\sim \mathrm{Dir}(0.03),
        \qquad \varepsilon = 0.25
        \end{aligned}
        ```

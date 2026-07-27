@@ -69,10 +69,10 @@
 
   ```math
   19 \times 19 \times 48
-  \rightarrow \operatorname{Conv}_{5 \times 5}(192)
-  \rightarrow 11 \times \operatorname{Conv}_{3 \times 3}(192)
-  \rightarrow \operatorname{Conv}_{1 \times 1}(1)
-  \rightarrow \operatorname{Softmax}
+  \rightarrow \mathrm{Conv}_{5 \times 5}(192)
+  \rightarrow 11 \times \mathrm{Conv}_{3 \times 3}(192)
+  \rightarrow \mathrm{Conv}_{1 \times 1}(1)
+  \rightarrow \mathrm{Softmax}
   ```
 
 - 对所有合法位置做 softmax，得到落子概率，本质上是分类模型
@@ -86,8 +86,8 @@
 
   ```math
   \text{卷积主干}
-  \rightarrow \operatorname{Conv}_{1 \times 1}
-  \rightarrow \operatorname{FC}(256)
+  \rightarrow \mathrm{Conv}_{1 \times 1}
+  \rightarrow \mathrm{FC}(256)
   \rightarrow \tanh
   \rightarrow v_\theta(s)
   ```
@@ -96,7 +96,7 @@
 - 胜率可以近似为：
 
   ```math
-  P(\operatorname{win} \mid s) = \frac{v+1}{2}
+  P(\mathrm{win} \mid s) = \frac{v+1}{2}
   ```
 
 #### 快速rollout策略网络
@@ -400,7 +400,7 @@
 ### 策略网络 Top-1 准确率
 
 ```math
-\operatorname{Accuracy}
+\mathrm{Accuracy}
 =
 \frac{
   \text{预测概率最大动作与人类动作相同的局面数}
@@ -415,7 +415,7 @@
 ### 价值网络 MSE
 
 ```math
-\operatorname{MSE}
+\mathrm{MSE}
 =
 \frac{1}{N}
 \sum_i \left(v_\theta(s_i) - z_i\right)^2,

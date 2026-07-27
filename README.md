@@ -168,6 +168,6 @@ python human_play.py --help
 
 ## 参考论文
 
-1. Silver, D., Huang, A., Maddison, C., et al. **Mastering the game of Go with deep neural networks and tree search**. *Nature* 529, 484–489 (2016). [DOI: 10.1038/nature16961](https://doi.org/10.1038/nature16961). 仓库笔记：[paper1_alphago.md](paper/paper1_alphago.md)。
-2. Silver, D., Schrittwieser, J., Simonyan, K., et al. **Mastering the game of Go without human knowledge**. *Nature* 550, 354–359 (2017). [DOI: 10.1038/nature24270](https://doi.org/10.1038/nature24270). 仓库笔记：[paper2_alphagoZero.md](paper/paper2_alphagoZero.md)。
-3. Silver, D., Hubert, T., Schrittwieser, J., et al. **A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play**. *Science* 362(6419), 1140–1144 (2018). [DOI: 10.1126/science.aar6404](https://doi.org/10.1126/science.aar6404). 仓库笔记：[paper3_alphaZero.md](paper/paper3_alphaZero.md)。
+1. Silver, D., Huang, A., Maddison, C., et al. **Mastering the game of Go with deep neural networks and tree search**. *Nature* 529, 484–489 (2016). 仓库笔记：[paper1_alphago.md](paper/paper1_alphago.md)。
+2. Silver, D., Schrittwieser, J., Simonyan, K., et al. **Mastering the game of Go without human knowledge**. *Nature* 550, 354–359 (2017). 仓库笔记：[paper2_alphagoZero.md](paper/paper2_alphagoZero.md)。
+3. Silver, D., Hubert, T., Schrittwieser, J., et al. **A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play**. *Science* 362(6419), 1140–1144 (2018). 仓库笔记：[paper3_alphaZero.md](paper/paper3_alphaZero.md)。
