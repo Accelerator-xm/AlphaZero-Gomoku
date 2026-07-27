@@ -24,18 +24,11 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
 - **整体架构**：
   - 从棋盘状态到最终动作：
 
-    ```math
-    s
-    \rightarrow f_\theta(s) = (p,v)
-    \rightarrow \mathrm{MCTS}
-    \rightarrow \pi(a \mid s)
-    ```
+    $`s \rightarrow f_\theta(s) = (p,v) \rightarrow \mathrm{MCTS} \rightarrow \pi(a \mid s)`$
 
 - **输入设计**：由多个棋盘平面组成：
 
-  ```math
-  N \times N \times (MT+L)
-  ```
+  $`N \times N \times (MT+L)`$
 
   - $N$：棋盘尺寸
   - $M$：棋子特征，例如围棋黑白2个，国际象棋12个（王、后、车、象、马、兵，黑白两方）
@@ -67,15 +60,7 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
 
 - **损失函数**：
 
-  ```math
-  L(\theta)
-  =
-  (z-v)^2
-  -
-  \pi^\top \log p
-  +
-  c\lVert\theta\rVert^2
-  ```
+  $`L(\theta) = (z-v)^2 - \pi^\top \log p + c\lVert\theta\rVert^2`$
 
 - **训练流程简化和在线化**
   - **Self-play Generator**
@@ -84,12 +69,7 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
   - 不再要求 ~~**Evaluator**~~
     - 即：
 
-      ```math
-      \theta_0
-      \rightarrow \theta_1
-      \rightarrow \theta_2
-      \rightarrow \cdots
-      ```
+      $`\theta_0 \rightarrow \theta_1 \rightarrow \theta_2 \rightarrow \cdots`$
 
     - 省掉大量候选模型对战
     - 训练流水线更简单
