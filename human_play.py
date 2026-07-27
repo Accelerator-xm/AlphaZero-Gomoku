@@ -36,8 +36,7 @@ class Human(object):
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("model", help="PyTorch model created by train.py")
-    parser.add_argument("--width", type=int, default=6)
-    parser.add_argument("--height", type=int, default=6)
+    parser.add_argument("--board-size", type=int, default=6)
     parser.add_argument("--n-in-row", type=int, default=4)
     parser.add_argument("--playouts", type=int, default=400)
     parser.add_argument("--channels", type=int, default=64)
@@ -55,11 +54,10 @@ def parse_args():
 
 def run():
     args = parse_args()
-    board = Board(width=args.width, height=args.height, n_in_row=args.n_in_row)
+    board = Board(size=args.board_size, n_in_row=args.n_in_row)
     game = Game(board)
     policy = PolicyValueNet(
-        args.width,
-        args.height,
+        args.board_size,
         model_file=args.model,
         device=args.device,
         channels=args.channels,

@@ -3,10 +3,9 @@ import numpy as np
 class Board:
     """游戏棋盘"""
 
-    def __init__(self, width=8, height=8, n_in_row=5):
-        # 棋盘大小，默认8*8
-        self.width = int(width)
-        self.height = int(height)
+    def __init__(self, size=8, n_in_row=5):
+        # 正方形棋盘边长，默认 8
+        self.size = int(size)
         # 获胜条件：连子数，默认5
         self.n_in_row = int(n_in_row)
         self.players = [1, 2]  # 玩家1和2
@@ -14,13 +13,14 @@ class Board:
     def init_board(self, start_player=0):
         """初始化棋盘"""
         # 棋盘一排必须能放下n_in_row个棋子
-        if self.width < self.n_in_row or self.height < self.n_in_row:
-            raise Exception('board width and height can not be '
-                            'less than {}'.format(self.n_in_row))
+        if self.size < self.n_in_row:
+            raise Exception(
+                "board size can not be less than {}".format(self.n_in_row)
+            )
         # 初始执子玩家
         self.current_player = self.players[start_player]  
-        # 用列表保存可落子位置，编号0 ~ width*height-1
-        self.availables = list(range(self.width * self.height))
+        # 用列表保存可落子位置，编号 0 ~ size**2-1
+        self.availables = list(range(self.size ** 2))
         # 棋盘状态，记录落子
         # key：棋落子位置
         # value：对应的棋手编号
@@ -37,31 +37,29 @@ class Board:
         6 7 8
         索引 5 的坐标是 (1,2)
         """
-        h = move // self.width
-        w = move % self.width
-        return [h, w]
+        row = move // self.size
+        col = move % self.size
+        return [row, col]
 
     def location_to_move(self, location):
         """坐标 -> 移动索引"""
-        # 必须是(x,y)
+        # 必须是 (row, col)
         if len(location) != 2:
             return -1
-        h = location[0]
-        w = location[1]
-        move = h * self.width + w
+        row, col = location
         # 必须在编号范围内
-        if move not in range(self.width * self.height):
+        if row not in range(self.size) or col not in range(self.size):
             return -1
-        return move
+        return row * self.size + col
 
     def current_state(self):
         """
         当前玩家视角下的棋盘状态
         输入给网络的特征
-        状态形状为 4*width*height。
+        状态形状为 4*size*size，四个特征平面
         """
         # 棋盘状态
-        square_state = np.zeros((4, self.width, self.height))
+        square_state = np.zeros((4, self.size, self.size))
 
         if self.states:
             moves, players = np.array(list(zip(*self.states.items())))
@@ -71,14 +69,14 @@ class Board:
             move_oppo = moves[players != self.current_player]
             # 第0层：当前玩家的落子情况
             # 有棋子为1
-            square_state[0][move_curr // self.width,
-                            move_curr % self.width] = 1.0
+            square_state[0][move_curr // self.size,
+                            move_curr % self.size] = 1.0
             # 第1层：对手玩家的落子情况
-            square_state[1][move_oppo // self.width,
-                            move_oppo % self.width] = 1.0
+            square_state[1][move_oppo // self.size,
+                            move_oppo % self.size] = 1.0
             # 第2层：最后一步落子位置
-            square_state[2][self.last_move // self.width,
-                            self.last_move % self.width] = 1.0
+            square_state[2][self.last_move // self.size,
+                            self.last_move % self.size] = 1.0
         
         # 第3层：标记当前该落哪一方的棋
         square_state[3][:,:] = ( 1 if self.current_player == self.players[0] else 0)
@@ -95,54 +93,6 @@ class Board:
             else self.players[1]
         )
         self.last_move = move
-
-
-    # def has_a_winner(self):
-    #     """
-    #     胜负判定
-    #     结束：(True, 胜方)
-    #     为结束：(False, -1)
-    #     """
-
-    #     width = self.width
-    #     height = self.height
-    #     states = self.states
-    #     n = self.n_in_row
-
-    #     moved = list(set(range(width * height)) - set(self.availables))
-    #     # 总步数少于 2*n_in_row-1 不可能结束
-    #     if len(moved) < self.n_in_row *2-1:
-    #         return False, -1
-
-    #     for m in moved:
-    #         h = m // width
-    #         w = m % width
-    #         player = states[m]
-
-    #         # 从m向右取n个位置，判断是否连子
-    #         # n个位置上有棋为玩家id，无棋为-1
-    #         # set()去重，如果只有一种元素（全1或全2）则结束
-    #         # m一定有棋，所以不可能是全 -1
-    #         if (w in range(width - n + 1) and
-    #                 len(set(states.get(i, -1) for i in range(m, m + n))) == 1):
-    #             return True, player
-
-    #         # 从m向下取n个位置
-    #         if (h in range(height - n + 1) and
-    #                 len(set(states.get(i, -1) for i in range(m, m + n * width, width))) == 1):
-    #             return True, player
-
-    #         # 向右下取n个位置
-    #         if (w in range(width - n + 1) and h in range(height - n + 1) and
-    #                 len(set(states.get(i, -1) for i in range(m, m + n * (width + 1), width + 1))) == 1):
-    #             return True, player
-
-    #         # 向左下取n个位置
-    #         if (w in range(n - 1, width) and h in range(height - n + 1) and
-    #                 len(set(states.get(i, -1) for i in range(m, m + n * (width - 1), width - 1))) == 1):
-    #             return True, player
-
-    #     return False, -1
 
     def has_a_winner(self):
         """
@@ -165,13 +115,12 @@ class Board:
         m = self.last_move      
         states = self.states
         player = states[m] # 可能获胜的玩家
-        width = self.width
-        height = self.height
+        size = self.size
         n = self.n_in_row
         
         # 将一维的最后一步转换为二维坐标
-        h = m // width
-        w = m % width
+        row = m // size
+        col = m % size
         
         # 定义需要检查的 4 个轴向
         # 每个轴包含正反两个方向的偏移量 (delta_h, delta_w)
@@ -188,19 +137,19 @@ class Board:
             count = 1  # 初始包含 last_move 本身（a+b+1 中的 1）
             
             # 向当前轴向的两个反方向分别延伸 (a 和 b)
-            for dh, dw in axis:
-                curr_h, curr_w = h + dh, w + dw
+            for d_row, d_col in axis:
+                curr_row, curr_col = row + d_row, col + d_col
                 
                 # 在棋盘边界内循环延伸
-                while 0 <= curr_h < height and 0 <= curr_w < width:
+                while 0 <= curr_row < size and 0 <= curr_col < size:
                     # 转换回一维位置
-                    curr_m = curr_h * width + curr_w
+                    curr_m = curr_row * size + curr_col
                     
                     # 检查该位置是否是当前玩家的棋子
                     if states.get(curr_m, -1) == player:
                         count += 1
-                        curr_h += dh
-                        curr_w += dw
+                        curr_row += d_row
+                        curr_col += d_col
                     else:
                         break # 遇到对方棋子或空位，该方向延伸结束
                         
@@ -233,19 +182,18 @@ class Game:
 
     def graphic(self, board, player1, player2):
         """绘制棋盘并显示游戏信息"""
-        width = board.width
-        height = board.height
+        size = board.size
 
         print("Player", player1, "with X".rjust(3))
         print("Player", player2, "with O".rjust(3))
         print()
-        for x in range(width):
-            print("{0:8}".format(x), end='')
+        for col in range(size):
+            print("{0:8}".format(col), end='')
         print('\r\n')
-        for i in range(height):
-            print("{0:4d}".format(i), end='')
-            for j in range(width):
-                loc = i * width + j
+        for row in range(size):
+            print("{0:4d}".format(row), end='')
+            for col in range(size):
+                loc = row * size + col
                 p = board.states.get(loc, -1)
                 if p == player1:
                     print('X'.center(8), end='')

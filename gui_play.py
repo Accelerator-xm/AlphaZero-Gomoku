@@ -94,8 +94,7 @@ class GomokuGUI:
         """创建新棋盘，并根据界面选项分配黑白棋与先后手。"""
         self.game_id += 1
         self.board = Board(
-            width=self.args.width,
-            height=self.args.height,
+            size=self.args.board_size,
             n_in_row=self.args.n_in_row,
         )
         # Board 中玩家 1 固定先行，因此玩家 1 在 GUI 中对应黑棋。
@@ -131,13 +130,11 @@ class GomokuGUI:
         margin = 42
         usable_width = max(canvas_width - 2 * margin, 1)
         usable_height = max(canvas_height - 2 * margin, 1)
-        x_steps = max(self.args.width - 1, 1)
-        y_steps = max(self.args.height - 1, 1)
-        spacing = min(usable_width / x_steps, usable_height / y_steps)
-        board_width = spacing * x_steps
-        board_height = spacing * y_steps
-        origin_x = (canvas_width - board_width) / 2
-        origin_y = (canvas_height - board_height) / 2
+        steps = max(self.args.board_size - 1, 1)
+        spacing = min(usable_width / steps, usable_height / steps)
+        board_pixel_size = spacing * steps
+        origin_x = (canvas_width - board_pixel_size) / 2
+        origin_y = (canvas_height - board_pixel_size) / 2
         return origin_x, origin_y, spacing
 
     def draw_board(self):
@@ -147,10 +144,10 @@ class GomokuGUI:
 
         self.canvas.delete("all")
         origin_x, origin_y, spacing = self.board_geometry()
-        right = origin_x + spacing * (self.args.width - 1)
-        bottom = origin_y + spacing * (self.args.height - 1)
+        right = origin_x + spacing * (self.args.board_size - 1)
+        bottom = origin_y + spacing * (self.args.board_size - 1)
 
-        for col in range(self.args.width):
+        for col in range(self.args.board_size):
             x = origin_x + col * spacing
             self.canvas.create_line(
                 x, origin_y, x, bottom, fill=self.GRID_COLOR, width=2
@@ -162,7 +159,7 @@ class GomokuGUI:
                 fill=self.GRID_COLOR,
             )
 
-        for row in range(self.args.height):
+        for row in range(self.args.board_size):
             y = origin_y + row * spacing
             self.canvas.create_line(
                 origin_x, y, right, y, fill=self.GRID_COLOR, width=2
@@ -215,7 +212,10 @@ class GomokuGUI:
         # 找到距离点击位置最近的交叉点。
         col = round((event.x - origin_x) / spacing)
         row = round((event.y - origin_y) / spacing)
-        if not (0 <= row < self.args.height and 0 <= col < self.args.width):
+        if not (
+            0 <= row < self.args.board_size
+            and 0 <= col < self.args.board_size
+        ):
             return
 
         x = origin_x + col * spacing
@@ -319,8 +319,7 @@ def parse_args():
         default="best_policy.model",
         help="train.py 生成的 PyTorch 模型（默认：best_policy.model）",
     )
-    parser.add_argument("--width", type=int, default=6)
-    parser.add_argument("--height", type=int, default=6)
+    parser.add_argument("--board-size", type=int, default=6)
     parser.add_argument("--n-in-row", type=int, default=4)
     parser.add_argument("--playouts", type=int, default=400)
     parser.add_argument("--channels", type=int, default=64)
@@ -338,10 +337,10 @@ def parse_args():
 def run():
     """校验参数、加载模型并启动 Tkinter 主事件循环。"""
     args = parse_args()
-    if args.width < 2 or args.height < 2:
-        raise ValueError("棋盘宽和高必须至少为 2")
-    if args.n_in_row < 2 or args.n_in_row > min(args.width, args.height):
-        raise ValueError("n-in-row 必须在 2 和棋盘较短边长度之间")
+    if args.board_size < 2:
+        raise ValueError("棋盘边长必须至少为 2")
+    if args.n_in_row < 2 or args.n_in_row > args.board_size:
+        raise ValueError("n-in-row 必须在 2 和棋盘边长之间")
 
     model_path = Path(args.model)
     if not model_path.is_file():
@@ -349,8 +348,7 @@ def run():
 
     # 模型只在程序启动时加载一次，重新开始对局不会重复读取模型文件。
     policy = PolicyValueNet(
-        args.width,
-        args.height,
+        args.board_size,
         model_file=str(model_path),
         device=args.device,
         channels=args.channels,

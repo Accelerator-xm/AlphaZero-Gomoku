@@ -20,31 +20,36 @@
 
 网络同时预测策略 `p` 和局面价值 `v`，训练目标为：
 
-```math
+$$
 \mathcal{L}=(z-v)^2-\pi^\top\log p+c\lVert\theta\rVert^2
-```
+$$
 
 其中第一项训练价值头，第二项训练策略头，最后一项是 L2 正则化。整体流程如下：
 
+<div style="max-width: 780px; margin: 0 auto;">
+
 ```mermaid
-flowchart 
-    A["当前策略价值网络"] --> B["MCTS 搜索"]
+%%{init: {'flowchart': {'useMaxWidth': false}, 'themeVariables': {'fontSize': '14px'}}}%%
+flowchart TD
+    A["当前策略网络"] --> B["MCTS"]
     B --> C["自我对弈"]
     C --> D["样本 (s, π, z)"]
-    D --> E["旋转与翻转增强"]
-    E --> F["经验回放与网络更新"]
+    D --> E["旋转/翻转"]
+    E --> F["回放与更新"]
     F --> G["候选模型"]
-    G --> H{"对战胜率超过阈值？"}
-    H -- 是 --> I["更新 best 模型"]
+    G --> H{"胜率超过阈值？"}
+    H -- 是 --> I["更新 best"]
     H -- 否 --> A
     I --> A
 ```
+
+</div>
 
 实现上，训练始终使用**当前网络**生成自我对弈数据（参考AlphaZero），并定期让候选网络与 `best` 网络比赛；候选模型胜率严格超过阈值后才更新 `best`（保留AlphaGo Zero的记录最好模型的流程）。
 
 ## 实现特点
 
-- **规则环境**：支持可配置宽高和连子数的五子棋棋盘；
+- **规则环境**：支持可配置棋盘边长和连子数的正方形五子棋棋盘；
 - **状态表示**：4 个特征平面，分别表示当前玩家棋子、对手棋子、上一步落子和当前执棋方；
 - **策略价值网络**：共享卷积层与残差塔，连接策略头和价值头；
 - **神经网络引导的 MCTS**：使用策略先验进行探索，以价值头评估叶节点，不执行随机 rollout；
@@ -70,6 +75,7 @@ flowchart
 │   ├── current_policy.model      # 已训练的候选模型
 │   └── best_policy.model         # 已训练的最佳模型
 └── paper/
+    ├── paper1_alphago.md         # AlphaGo 论文笔记
     ├── paper2_alphagoZero.md     # AlphaGo Zero 论文笔记
     └── paper3_alphaZero.md       # AlphaZero 论文笔记
 ```
@@ -119,7 +125,7 @@ python human_play.py 6_6_4_model/best_policy.model --human-first
 Your move: 2,3
 ```
 
-> 加载模型时，`width`、`height`、`channels` 和 `num-blocks` 必须与训练模型完全一致，否则 PyTorch 会报告参数尺寸不匹配。
+> 加载模型时，`--board-size`、`--channels` 和 `--num-blocks` 必须与训练模型完全一致，否则 PyTorch 会报告参数尺寸不匹配。
 
 ## 训练模型
 
@@ -134,6 +140,12 @@ python train.py
 1. 将候选网络保存为 `current_policy.model`；
 2. 让候选网络与当前 `best` 网络对弈 20 局；
 3. 当候选网络胜率严格超过 55% 时，保存新的 `best_policy.model`。
+
+例如，训练 8 × 8、5 子连线的模型：
+
+```bash
+python train.py --board-size 8 --n-in-row 5
+```
 
 默认配置参数量大概16万，对于float32模型约大小0.6MB，我在本机电脑（3050ti）训练实际大概6小时，具体参考[6_6_4_train](6_6_4_train.ipynb)。
 
@@ -156,5 +168,6 @@ python human_play.py --help
 
 ## 参考论文
 
-1. Silver, D., Schrittwieser, J., Simonyan, K., et al. **Mastering the game of Go without human knowledge**. *Nature* 550, 354–359 (2017). [DOI: 10.1038/nature24270](https://doi.org/10.1038/nature24270). 仓库笔记：[paper2_alphagoZero.md](paper/paper2_alphagoZero.md)。
-2. Silver, D., Hubert, T., Schrittwieser, J., et al. **A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play**. *Science* 362(6419), 1140–1144 (2018). [DOI: 10.1126/science.aar6404](https://doi.org/10.1126/science.aar6404). 仓库笔记：[paper3_alphaZero.md](paper/paper3_alphaZero.md)。
+1. Silver, D., Huang, A., Maddison, C., et al. **Mastering the game of Go with deep neural networks and tree search**. *Nature* 529, 484–489 (2016). [DOI: 10.1038/nature16961](https://doi.org/10.1038/nature16961). 仓库笔记：[paper1_alphago.md](paper/paper1_alphago.md)。
+2. Silver, D., Schrittwieser, J., Simonyan, K., et al. **Mastering the game of Go without human knowledge**. *Nature* 550, 354–359 (2017). [DOI: 10.1038/nature24270](https://doi.org/10.1038/nature24270). 仓库笔记：[paper2_alphagoZero.md](paper/paper2_alphagoZero.md)。
+3. Silver, D., Hubert, T., Schrittwieser, J., et al. **A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play**. *Science* 362(6419), 1140–1144 (2018). [DOI: 10.1126/science.aar6404](https://doi.org/10.1126/science.aar6404). 仓库笔记：[paper3_alphaZero.md](paper/paper3_alphaZero.md)。

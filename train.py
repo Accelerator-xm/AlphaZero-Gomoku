@@ -13,12 +13,10 @@ class TrainPipeline:
     """训练流程"""
 
     def __init__(self, args):
-        self.board_width = args.width
-        self.board_height = args.height
+        self.board_size = args.board_size
         self.n_in_row = args.n_in_row
         self.board = Board(
-            width=self.board_width,
-            height=self.board_height,
+            size=self.board_size,
             n_in_row=self.n_in_row,
         )
         self.game = Game(self.board)
@@ -39,8 +37,7 @@ class TrainPipeline:
         # 训练网络负责梯度更新
         # best 网络固定用于生成自博弈数据和充当评估基准。
         self.policy_value_net = PolicyValueNet(
-            self.board_width,
-            self.board_height,
+            self.board_size,
             model_file=args.init_model,
             device=args.device,
             l2_const=args.l2_const,
@@ -51,8 +48,7 @@ class TrainPipeline:
             kl_target=args.kl_target,
         )
         self.best_policy_value_net = PolicyValueNet(
-            self.board_width,
-            self.board_height,
+            self.board_size,
             device=args.device,
             l2_const=args.l2_const,
             channels=args.channels,
@@ -81,7 +77,9 @@ class TrainPipeline:
                 # 逆时针旋转
                 equi_state = np.array([np.rot90(s, i) for s in state])
                 equi_mcts_prob = np.rot90(
-                    np.flipud(mcts_prob.reshape(self.board_height, self.board_width)),
+                    np.flipud(
+                        mcts_prob.reshape(self.board_size, self.board_size)
+                    ),
                     i
                 )
                 extend_data.append(
@@ -207,8 +205,7 @@ class TrainPipeline:
 def parse_args():
     parser = argparse.ArgumentParser(description="训练 AlphaZero")
     parser.add_argument("--init-model", help="继续训练时加载的初始模型路径")
-    parser.add_argument("--width", type=int, default=6, help="棋盘宽度")
-    parser.add_argument("--height", type=int, default=6, help="棋盘高度")
+    parser.add_argument("--board-size", type=int, default=6, help="正方形棋盘边长")
     parser.add_argument("--n-in-row", type=int, default=4, help="获胜所需连子数")
     parser.add_argument("--learn-rate", type=float, default=2e-3, help="基础学习率")
     parser.add_argument("--temp", type=float, default=1.0, help="自博弈采样温度")

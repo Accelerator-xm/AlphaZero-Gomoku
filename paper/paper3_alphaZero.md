@@ -22,9 +22,21 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
 与论文AlphaGo Zero几乎相同，需要先看AlphaGo Zero论文，这里基本只给出与AlphaGo Zero的**不同点**
 
 - **整体架构**：
-  - 棋盘状态s -> 神经网络 -> 先验概率$p$与$v$ -> MCTS搜索树 -> 最终动作 $\pi(a|s)$
+  - 从棋盘状态到最终动作：
 
-- **输入设计**：由多个棋盘平面组成 $N \times N \times (M T + L)$
+    ```math
+    s
+    \rightarrow f_\theta(s) = (p,v)
+    \rightarrow \operatorname{MCTS}
+    \rightarrow \pi(a \mid s)
+    ```
+
+- **输入设计**：由多个棋盘平面组成：
+
+  ```math
+  N \times N \times (MT+L)
+  ```
+
   - $N$：棋盘尺寸
   - $M$：棋子特征，例如围棋黑白2个，国际象棋12个（王、后、车、象、马、兵，黑白两方）
   - $T$：历史数量，例如围棋8个历史状态，黑白均需要记录八个盘面，所以是 $M T$ 个
@@ -40,7 +52,7 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
     - 9个兵的欠升变平面
   - 将棋 $9×9×139=11259$
 
-- **Value Head价值头**：输出 $[1,-1]$
+- **Value Head价值头**：输出范围为 $[-1,1]$
   - **获胜概率**推广为**期望结果**：其他棋类有平局， $z \in \{-1, 0, +1\}$，语义上不是胜率，而是最终比赛结果的期望值
 
 - **MCTS搜索**：选择、扩展/评估、回传、动作选择
@@ -53,15 +65,32 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
   - 对于国际象棋和将棋不能采用对称变换扩展数据，围棋和五子棋可以
   - AlphaZero 不进行训练数据对称增强，也不在 MCTS 中变换棋盘
 
-- **损失函数**：$L(\theta) = (z - v)^2 - \pi^\top \log p + c \|\theta\|^2$
+- **损失函数**：
 
+  ```math
+  L(\theta)
+  =
+  (z-v)^2
+  -
+  \pi^\top \log p
+  +
+  c\lVert\theta\rVert^2
+  ```
 
 - **训练流程简化和在线化**
   - **Self-play Generator**
     - 最新网络参数 **自己与自己下棋**，而不是最优模型
   - **Optimizer**
   - 不再要求 ~~**Evaluator**~~
-    - 即 $\theta_0 \rightarrow \theta_1 \rightarrow \theta_2 \rightarrow \cdots$
+    - 即：
+
+      ```math
+      \theta_0
+      \rightarrow \theta_1
+      \rightarrow \theta_2
+      \rightarrow \cdots
+      ```
+
     - 省掉大量候选模型对战
     - 训练流水线更简单
     - 避免模型因为没有超过55%阈值而长时间停留在旧版本
@@ -70,5 +99,3 @@ AlphaZero目标：用统一算法解决多个领域，而不是针对某个游�
 - 训练配置
   - 每个 batch 4096 个局面
   - 每步执行 800 次 MCTS
-
-

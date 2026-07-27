@@ -16,12 +16,22 @@ class TreeNode(object):
     """
 
     def __init__(self, parent, prior_p):
-        self._parent = parent
-        self._children = {}  # 从动作到 TreeNode 的映射
-        self._n_visits = 0  # 被访问的次数
-        self._Q = 0         # 动作价值（转移到这个节点需要动作）
-        self._u = 0         # 先验分数
-        self._P = prior_p   # 先验概率（策略网络输出）
+        """
+        初始化当前状态 s2
+        f(s1,a) = s2
+
+        需要注意的是：假设s1轮到玩家1下棋，边(s1,a)是玩家1做的，
+        存储的信息是玩家1在状态s1执行动作a的信息。
+        然而移动到s2节点时，玩家会切换成玩家2。
+        在后续回传操作时会用到这个点
+        """
+        self._parent = parent   # 上一个状态 s1
+        self._children = {}  # s2的动作转移集合，所有可能的s3
+        # 以下可以看成边(s1,a)的信息
+        self._n_visits = 0  # (s1,a) 被访问的次数，也是s2被访问的次数，对于非叶子节点也是sum(N(s2,b))
+        self._Q = 0         # (s1,a) 动作价值，实际是玩家1的胜率
+        self._u = 0         # PUCT探索分数
+        self._P = prior_p   # (s1,a) 的先验概率
 
     def expand(self, action_priors):
         """
@@ -37,7 +47,7 @@ class TreeNode(object):
         """
         PUCT选择
         在子节点中选择价值最大的分支。
-        返回：(action, next_node) 元组。
+        返回：(action, next_node)
         """
         # 匿名函数 lambda act_node: act_node[1].get_value(c_puct)
         # 参数名act_node，这里输入(action, child_node)
@@ -103,10 +113,10 @@ class MCTS(object):
         self._c_puct = c_puct
         self._n_playout = n_playout
 
-    def _playout(self, state):
+    def _playout(self, board):
         """
         模拟推演一次下棋
-        state：棋盘
+        board：棋盘
         从根节点到叶子节点执行一次模拟，并将叶子值回传到祖先节点
         状态会原地修改，因此外部必须传入副本
         """
@@ -118,13 +128,14 @@ class MCTS(object):
                 break
             # 贪心选择下一步。
             action, node = node.select(self._c_puct)
-            state.do_move(action)
+            board.do_move(action)
 
         # 评估叶子节点，扩展子节点
         # 网络侧已经过滤了可选动作了
-        action_probs, leaf_value = self._policy(state)
+        # 评估的是(node, b)的价值，实际是玩家2的价值
+        action_probs, leaf_value = self._policy(board)
         # 检查游戏是否结束。
-        end, winner = state.game_end()
+        end, winner = board.game_end()
         if not end:
             node.expand(action_probs)
         else:
@@ -132,14 +143,16 @@ class MCTS(object):
             if winner == -1:  # 平局
                 leaf_value = 0.0
             else:
+                # 这里是之前说要注意的地方get_current_player()是玩家2
+                # 玩家2的胜负情况，对应价值
                 leaf_value = (
-                    1.0 if winner == state.get_current_player() else -1.0
+                    1.0 if winner == board.get_current_player() else -1.0
                 )
 
         # 回传更新
-        # 网络输出：当前状态，轮到的棋手的动作概率和价值，棋手a的分数
-        # 树节点Q表示：上一轮棋手b执行动作到这一步的价值，想象成边的值
-        # 更新的是边的值，a的分数取负才是b的分数
+        # 网络输出：当前状态，轮到的棋手的动作概率和价值，这里是棋手2的分数
+        # 树节点Q表示：上一轮棋手1执行动作到这一步的价值
+        # 更新的是边的值，棋手2的分数取负就是棋手1的分数
         node.update_recursive(-leaf_value)
 
     def get_move_probs(self, state, temp=1e-3):
@@ -199,7 +212,7 @@ class MCTSPlayer(object):
     def get_action(self, board, return_prob=0):
         sensible_moves = board.availables
         # MCTS 返回的 pi 向量，和 AlphaGo Zero 论文中的定义一致。
-        move_probs = np.zeros(board.width*board.height)
+        move_probs = np.zeros(board.size ** 2)
         if len(sensible_moves) > 0:
             acts, probs = self.mcts.get_move_probs(board, self.temp)
             # 合法动作概率 -> 动作概率（包含完整棋盘位置的对于概率）

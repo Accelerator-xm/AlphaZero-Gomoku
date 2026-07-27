@@ -27,13 +27,13 @@ class ResidualBlock(nn.Module):
 class Net(nn.Module):
     """策略价值网络结构"""
 
-    def __init__(self, board_width, board_height, channels=64, num_blocks=4):
+    def __init__(self, board_size, channels=64, num_blocks=4):
         """
         channels特征通道数
         num_blocks残差块数量
         """
         super().__init__()
-        board_size = board_width * board_height
+        board_area = board_size ** 2
 
         # 输入层
         # 接收4通道的输入：当前棋盘状态 (当前玩家盘面、对手盘面、上一轮落子位子、当前玩家信息)
@@ -51,12 +51,12 @@ class Net(nn.Module):
         # 输出每个位置的落子概率
         self.policy_conv = nn.Conv2d(channels, 4, kernel_size=1, bias=False)
         self.policy_bn = nn.BatchNorm2d(4)
-        self.policy_fc = nn.Linear(4 * board_size, board_size)
+        self.policy_fc = nn.Linear(4 * board_area, board_area)
 
         # 价值头，当前状态的价值
         self.value_conv = nn.Conv2d(channels, 2, kernel_size=1, bias=False)
         self.value_bn = nn.BatchNorm2d(2)
-        self.value_fc1 = nn.Linear(2 * board_size, 128)
+        self.value_fc1 = nn.Linear(2 * board_area, 128)
         self.value_fc2 = nn.Linear(128, 1)
 
     def forward(self, state_input):
@@ -86,8 +86,7 @@ class PolicyValueNet:
 
     def __init__(
         self,
-        board_width,
-        board_height,
+        board_size,
         model_file=None,
         device="cpu",
         l2_const=1e-4,
@@ -98,8 +97,7 @@ class PolicyValueNet:
         epochs=5,
         kl_target=0.02,
     ):
-        self.board_width = board_width
-        self.board_height = board_height
+        self.board_size = board_size
         self.device = torch.device(device)
         self.l2_const = l2_const    # l2正则化惩罚项、权重衰减参数
         self.learn_rate = learn_rate    # 学习率 
@@ -110,8 +108,7 @@ class PolicyValueNet:
         self.num_blocks = num_blocks    # 残差块数
         
         self.policy_value_net = Net(
-            board_width,
-            board_height,
+            board_size,
             channels=self.channels,
             num_blocks=self.num_blocks,
         ).to(self.device)
@@ -154,9 +151,12 @@ class PolicyValueNet:
         输出：所有可选动作的 (动作, 概率) 列表，以及当前局面的价值
         """
         legal_positions = board.availables
-        
+
+        # 输入给网络的维度是 (batch_size, 4, board_size, board_size)
         current_state = np.ascontiguousarray(
-            board.current_state().reshape(-1, 4, self.board_width, self.board_height)
+            board.current_state().reshape(
+                -1, 4, self.board_size, self.board_size
+            )
         )
         state = torch.as_tensor(current_state, dtype=torch.float32, device=self.device)
         

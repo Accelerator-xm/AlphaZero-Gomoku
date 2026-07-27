@@ -45,7 +45,16 @@ AlphaGo Zero：
 - MCTS 根据网络给出的 $(p,v)$ 生成更强的搜索策略 $\pi$，相当于策略改进
 - 使用搜索策略进行自博弈，最终胜负 $z$ 用来评估该策略
 - 再把 $\pi$ 和 $z$ 压缩回神经网络
-- $p_\theta \xrightarrow{\text{MCTS改进}} \pi \xrightarrow{\text{自博弈评估}} z \xrightarrow{\text{监督训练}} p_{\theta'}, v_{\theta'}$
+
+```math
+p_\theta
+\xrightarrow{\text{MCTS 改进}}
+\pi
+\xrightarrow{\text{自博弈评估}}
+z
+\xrightarrow{\text{监督训练}}
+\left(p_{\theta'},v_{\theta'}\right)
+```
 
 **注意**：$\pi$ 通常比 $p_\theta$ 更强，因为 $p_\theta$ 只经过一次神经网络前向传播，而 $\pi$ 综合了大量树搜索模拟结果。因此，MCTS 实际上充当了神经网络的“老师”
 
@@ -62,9 +71,27 @@ AlphaGo Zero：
 #### 共享残差主干：
 
 - 首卷积模块，提取输入特征
-  - $19 \times 19 \times 17 \rightarrow \text{Conv}_{3 \times 3}(256)$
+
+  ```math
+  19 \times 19 \times 17
+  \rightarrow
+  \operatorname{Conv}_{3 \times 3}(256)
+  ```
+
 - 随后经过n个残差块
-  - 每个残差块：$x \rightarrow \text{Conv}_{3 \times 3}(256) \rightarrow \text{BN} \rightarrow \text{ReLU} \rightarrow \text{Conv}_{3 \times 3}(256) \rightarrow \text{BN} \rightarrow +x \rightarrow \text{ReLU}$
+  - 每个残差块：
+
+    ```math
+    x
+    \rightarrow \operatorname{Conv}_{3 \times 3}(256)
+    \rightarrow \operatorname{BN}
+    \rightarrow \operatorname{ReLU}
+    \rightarrow \operatorname{Conv}_{3 \times 3}(256)
+    \rightarrow \operatorname{BN}
+    \rightarrow +x
+    \rightarrow \operatorname{ReLU}
+    ```
+
   - $+x$：表示**残差连接**或**跳跃连接**，$F(x) + x$
   - 论文中：
     - 20-block 网络表示1个首卷积模块+19个残差块，约2280万参数
@@ -73,7 +100,7 @@ AlphaGo Zero：
 残差网络的优势：
 
 - 普通深层卷积网络容易出现：梯度消失、训练退化、层数增加但性能反而下降
-- 残差连接学习的是 $F(x) = H(x) - x$，输出 $H(x) = F(x) - x$，梯度可以沿跳跃连接传播，使几十层网络仍能稳定训练
+- 残差连接学习的是 $F(x) = H(x) - x$，输出 $H(x) = F(x) + x$，梯度可以沿跳跃连接传播，使几十层网络仍能稳定训练
 - **实验表明**：使用残差网络比普通卷积网络提高超过约 600 Elo
 
 共享主干优势：
@@ -87,16 +114,39 @@ AlphaGo Zero：
 
 #### Policy Head策略头：
 
-- $19 \times 19 \times 256 \rightarrow \text{Conv}_{1 \times 1}(2) \rightarrow \text{reshape}(19×19×2) \rightarrow \text{FC}(362) \rightarrow \text{Softmax}$
+- 网络结构：
+
+  ```math
+  19 \times 19 \times 256
+  \rightarrow \operatorname{Conv}_{1 \times 1}(2)
+  \rightarrow \operatorname{reshape}(19 \times 19 \times 2)
+  \rightarrow \operatorname{FC}(362)
+  \rightarrow \operatorname{Softmax}
+  ```
+
   - $\text{reshape}(19×19×2)$ 表示把三维图像转化成一维向量
   - 362输出：361个棋盘交叉点、1个pass（弃权本轮下棋）
   - 含义：在当前局面下，每个合法动作作为候选的**先验概率**，并不是最终直接使用的动作策略
 
 #### Value Head价值头：
 
-- $19 \times 19 \times 256 \rightarrow \text{Conv}_{1 \times 1}(1) \rightarrow \text{reshape}(19×19×1) \rightarrow \text{FC}(256) \rightarrow \text{FC}(1) \rightarrow \text{tanh}$
+- 网络结构：
+
+  ```math
+  19 \times 19 \times 256
+  \rightarrow \operatorname{Conv}_{1 \times 1}(1)
+  \rightarrow \operatorname{reshape}(19 \times 19 \times 1)
+  \rightarrow \operatorname{FC}(256)
+  \rightarrow \operatorname{FC}(1)
+  \rightarrow \tanh
+  ```
+
   - 输出：$v \in [-1, 1]$，期望胜负
-  - 胜率可以近似为：$P(\text{win} \mid s) = \frac{v + 1}{2}$
+  - 胜率可以近似为：
+
+    ```math
+    P(\operatorname{win} \mid s) = \frac{v+1}{2}
+    ```
 
 ### MCTS 的架构设计
 
@@ -113,7 +163,12 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 #### Expand and Evaluate：扩展和评估
 
-- 当搜索到一个尚未展开的叶节点 $s_L$，只调用一次神经网络：$(P(s_L,\cdot), v) = f_\theta(s_L)$
+- 当搜索到一个尚未展开的叶节点 $s_L$，只调用一次神经网络：
+
+  ```math
+  \left(P(s_L,\cdot),v\right) = f_\theta(s_L)
+  ```
+
   - $P$ 初始化新节点所有动作的先验
   - $v$ 用作该叶节点的价值
   - 不再从该节点随机模拟到终局获取 $z$
@@ -122,7 +177,15 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 #### Play最终动作选择：
 
-- 构造：$\pi(a \mid s) = \frac{N(s,a)^{1/\tau}}{\sum_b N(s,b)^{1/\tau}}$
+- 构造：
+
+  ```math
+  \pi(a \mid s)
+  =
+  \frac{N(s,a)^{1/\tau}}
+       {\sum_b N(s,b)^{1/\tau}}
+  ```
+
   - $\tau$ 温度参数
     - $\tau=1$：按访问次数比例采样，探索性较强
     - $\tau=0$：近似选择访问次数最多的动作（AlphaGo的方法）
@@ -144,11 +207,27 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 #### 损失函数
 
-- **损失函数**：$L(\theta) = (z - v)^2 - \pi^\top \log p + c \|\theta\|^2$
-  - **价值损失**均方误差：$L_v = (z - v)^2$
-  - **策略损失**交叉熵：$L_p = -\pi^\top \log p$
+- **损失函数**：
+
+  ```math
+  \begin{aligned}
+  L(\theta)
+  &=
+  (z-v)^2
+  -
+  \pi^\top \log p
+  +
+  c\lVert\theta\rVert^2, \\
+  L_v &= (z-v)^2, \\
+  L_p &= -\pi^\top\log p, \\
+  L_{\mathrm{reg}} &= c\lVert\theta\rVert^2
+  \end{aligned}
+  ```
+
+  - **价值损失**：均方误差
+  - **策略损失**：交叉熵
     - $\top$ 表示将这个列向量（或行向量）进行转置
-  - **L2正则化**用于抑制过拟合：$\mathcal L_{\mathrm{reg}} = c \|\theta\|^2$
+  - **L2正则化**：用于抑制过拟合
     - 论文设置：$c = 10^{-4}$
 
 #### 完整训练流水线
@@ -167,8 +246,15 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
      - 前 30 手设置 $\tau = 1$
      - 30 手之后设置 $\tau \rightarrow 0$
      - 根节点先验加入 Dirichlet 噪声：
-       - $P'(s,a) = (1-\varepsilon)p_a + \varepsilon\eta_a$
-       - 论文设置：$\eta \sim \mathrm{Dir}(0.03), \qquad \varepsilon = 0.25$
+
+       ```math
+       \begin{aligned}
+       P'(s,a) &= (1-\varepsilon)p_a + \varepsilon\eta_a, \\
+       \eta &\sim \operatorname{Dir}(0.03),
+       \qquad \varepsilon = 0.25
+       \end{aligned}
+       ```
+
        - 防止所有自博弈对局快速收敛到同一种开局
 
 2. **Optimizer**
@@ -185,7 +271,11 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 3. **Evaluator**
 
-   每个新 checkpoint（候选模型） 与当前最优模型进行400盘对局，只有候选模型胜率超过 55%，它才会成为新的最优模型：$\theta^* \leftarrow \theta_{\text{candidate}}$
+   每个新 checkpoint（候选模型）与当前最优模型进行 400 盘对局，只有候选模型胜率超过 55%，它才会成为新的最优模型：
+
+   ```math
+   \theta^* \leftarrow \theta_{\mathrm{candidate}}
+   ```
 
    - 对局设置：
      - 每步 1600 次 MCTS
