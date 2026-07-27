@@ -46,7 +46,7 @@ AlphaGo Zero：
 - 使用搜索策略进行自博弈，最终胜负 $z$ 用来评估该策略
 - 再把 $\pi$ 和 $z$ 压缩回神经网络
 
-$$
+```math
 p_\theta
 \xrightarrow{\text{MCTS 改进}}
 \pi
@@ -54,7 +54,7 @@ p_\theta
 z
 \xrightarrow{\text{监督训练}}
 \left(p_{\theta'},v_{\theta'}\right)
-$$
+```
 
 **注意**：$\pi$ 通常比 $p_\theta$ 更强，因为 $p_\theta$ 只经过一次神经网络前向传播，而 $\pi$ 综合了大量树搜索模拟结果。因此，MCTS 实际上充当了神经网络的“老师”
 
@@ -72,16 +72,16 @@ $$
 
 - 首卷积模块，提取输入特征
 
-  $$
+  ```math
   19 \times 19 \times 17
   \rightarrow
   \mathrm{Conv}_{3 \times 3}(256)
-  $$
+  ```
 
 - 随后经过n个残差块
   - 每个残差块：
 
-    $$
+    ```math
     x
       \rightarrow \mathrm{Conv}_{3 \times 3}(256)
       \rightarrow \mathrm{BN}
@@ -90,7 +90,7 @@ $$
       \rightarrow \mathrm{BN}
     \rightarrow +x
       \rightarrow \mathrm{ReLU}
-    $$
+    ```
 
   - $+x$：表示**残差连接**或**跳跃连接**，$F(x) + x$
   - 论文中：
@@ -116,13 +116,13 @@ $$
 
 - 网络结构：
 
-  $$
+  ```math
   19 \times 19 \times 256
   \rightarrow \mathrm{Conv}_{1 \times 1}(2)
   \rightarrow \mathrm{reshape}(19 \times 19 \times 2)
   \rightarrow \mathrm{FC}(362)
   \rightarrow \mathrm{Softmax}
-  $$
+  ```
 
   - $\operatorname{reshape}(19 \times 19 \times 2)$ 表示把三维图像转化成一维向量
   - 362输出：361个棋盘交叉点、1个pass（弃权本轮下棋）
@@ -132,21 +132,21 @@ $$
 
 - 网络结构：
 
-  $$
+  ```math
   19 \times 19 \times 256
   \rightarrow \mathrm{Conv}_{1 \times 1}(1)
   \rightarrow \mathrm{reshape}(19 \times 19 \times 1)
   \rightarrow \mathrm{FC}(256)
   \rightarrow \mathrm{FC}(1)
   \rightarrow \tanh
-  $$
+  ```
 
   - 输出：$v \in [-1, 1]$，期望胜负
   - 胜率可以近似为：
 
-    $$
+    ```math
     P(\mathrm{win} \mid s) = \frac{v+1}{2}
-    $$
+    ```
 
 ### MCTS 的架构设计
 
@@ -165,9 +165,9 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 - 当搜索到一个尚未展开的叶节点 $s_L$，只调用一次神经网络：
 
-  $$
+  ```math
   \left(P(s_L,\cdot),v\right) = f_\theta(s_L)
-  $$
+  ```
 
   - $P$ 初始化新节点所有动作的先验
   - $v$ 用作该叶节点的价值
@@ -179,12 +179,12 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 - 构造：
 
-  $$
+  ```math
   \pi(a \mid s)
   =
   \frac{N(s,a)^{1/\tau}}
        {\sum_b N(s,b)^{1/\tau}}
-  $$
+  ```
 
   - $\tau$ 温度参数
     - $\tau=1$：按访问次数比例采样，探索性较强
@@ -209,7 +209,7 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
 - **损失函数**：
 
-  $$
+  ```math
   \begin{aligned}
   L(\theta)
   &=
@@ -222,7 +222,7 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
   L_p &= -\pi^\top\log p, \\
   L_{\mathrm{reg}} &= c\lVert\theta\rVert^2
   \end{aligned}
-  $$
+  ```
 
   - **价值损失**：均方误差
   - **策略损失**：交叉熵
@@ -247,13 +247,13 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
      - 30 手之后设置 $\tau \rightarrow 0$
      - 根节点先验加入 Dirichlet 噪声：
 
-       $$
+       ```math
        \begin{aligned}
        P'(s,a) &= (1-\varepsilon)p_a + \varepsilon\eta_a, \\
       \eta &\sim \mathrm{Dir}(0.03),
        \qquad \varepsilon = 0.25
        \end{aligned}
-       $$
+       ```
 
        - 防止所有自博弈对局快速收敛到同一种开局
 
@@ -273,9 +273,9 @@ AlphaGo论文已经详细介绍了MCTS搜索，这里仅介绍区别
 
    每个新 checkpoint（候选模型）与当前最优模型进行 400 盘对局，只有候选模型胜率超过 55%，它才会成为新的最优模型：
 
-   $$
+   ```math
    \theta^* \leftarrow \theta_{\mathrm{candidate}}
-   $$
+   ```
 
    - 对局设置：
      - 每步 1600 次 MCTS
