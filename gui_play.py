@@ -12,7 +12,7 @@ from pathlib import Path
 from tkinter import messagebox
 
 from game import Board
-from mcts_alphaZero import MCTSPlayer
+from mcts_alphaZero_simple import MCTSPlayer
 from policy_value_net import PolicyValueNet
 
 

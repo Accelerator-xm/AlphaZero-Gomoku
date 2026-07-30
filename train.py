@@ -1,3 +1,7 @@
+"""
+单卡训练
+"""
+
 import argparse
 import random
 import time
@@ -5,7 +9,8 @@ from collections import defaultdict, deque
 from datetime import timedelta
 import numpy as np
 from game import Board, Game
-from mcts_alphaZero import MCTSPlayer
+from mcts_alphaZero_simple import MCTSPlayer
+from mcts_alphaZero import BatchedMCTSPlayer
 from policy_value_net import PolicyValueNet
 
 
@@ -21,8 +26,13 @@ class TrainPipeline:
         )
         self.game = Game(self.board)
 
+        self.is_MCTS_simple = args.is_MCTS_simple   # MCTS版本
+
         self.n_playout = args.playouts  # MCTS搜索模拟次数
         self.c_puct = args.c_puct       # MCTS 探索系数
+        self.leaf_batch_size=args.leaf_batch_size
+        self.virtual_loss=args.virtual_loss
+
         self.play_batch_size = args.play_batch_size # 每批自博弈局数
         self.buffer_size = args.buffer_size # 缓冲区大小
         self.data_buffer = deque(maxlen=self.buffer_size)
@@ -34,8 +44,8 @@ class TrainPipeline:
         self.current_model = args.current_model # 当前模型存储位置
         self.best_model = args.best_model       # 最好模型存储位置
 
-        # 训练网络负责梯度更新
-        # best 网络固定用于生成自博弈数据和充当评估基准。
+
+        # 训练网络负责梯度更新并产生数据
         self.policy_value_net = PolicyValueNet(
             self.board_size,
             model_file=args.init_model,
@@ -47,6 +57,7 @@ class TrainPipeline:
             epochs=args.epochs,
             kl_target=args.kl_target,
         )
+        # best 网络记录当最好的模型
         self.best_policy_value_net = PolicyValueNet(
             self.board_size,
             device=args.device,
@@ -60,14 +71,25 @@ class TrainPipeline:
         self.best_policy_value_net.copy_from(self.policy_value_net)
         
         # 自博弈玩家
-        self.selfplay_player = MCTSPlayer(
-            self.policy_value_net.policy_value_fn,
-            c_puct=self.c_puct,
-            n_playout=self.n_playout,
-            is_selfplay=1,
-            temp=args.temp,
-        )
-        self.episode_len = 0
+        if self.is_MCTS_simple:
+            self.selfplay_player = MCTSPlayer(
+                self.policy_value_net.policy_value_fn,
+                c_puct=self.c_puct,
+                n_playout=self.n_playout,
+                is_selfplay=1,
+                temp=args.temp,
+            )
+        else:
+            self.selfplay_player = BatchedMCTSPlayer(
+                self.policy_value_net.policy_value_fn_batch,
+                c_puct=args.c_puct,
+                n_playout=args.playouts,
+                is_selfplay=1,
+                temp=args.temp,
+                leaf_batch_size=self.leaf_batch_size,
+                virtual_loss=self.virtual_loss,
+            )
+        self.episode_len = 0    # 对局步数
 
     def get_equi_data(self, play_data):
         """通过旋转和翻转扩充数据集"""
@@ -116,16 +138,33 @@ class TrainPipeline:
 
     def policy_evaluate(self):
         """与 best 网络对战，评估当前策略"""
-        current_player = MCTSPlayer(
-            self.policy_value_net.policy_value_fn,
-            c_puct=self.c_puct,
-            n_playout=self.n_playout,
-        )
-        best_player = MCTSPlayer(
-            self.best_policy_value_net.policy_value_fn,
-            c_puct=self.c_puct,
-            n_playout=self.n_playout,
-        )
+        if self.is_MCTS_simple:
+            current_player = MCTSPlayer(
+                self.policy_value_net.policy_value_fn,
+                c_puct=self.c_puct,
+                n_playout=self.n_playout,
+            )
+            best_player = MCTSPlayer(
+                self.best_policy_value_net.policy_value_fn,
+                c_puct=self.c_puct,
+                n_playout=self.n_playout,
+            )
+        else:
+            current_player = BatchedMCTSPlayer(
+                self.policy_value_net.policy_value_fn_batch,
+                c_puct=self.c_puct,
+                n_playout=self.n_playout,
+                leaf_batch_size=self.leaf_batch_size,
+                virtual_loss=self.virtual_loss,
+            )
+            best_player = BatchedMCTSPlayer(
+                self.best_policy_value_net.policy_value_fn_batch,
+                c_puct=self.c_puct,
+                n_playout=self.n_playout,
+                leaf_batch_size=self.leaf_batch_size,
+                virtual_loss=self.virtual_loss,
+            )
+
         result_count = defaultdict(int)
         for i in range(self.evaluate_games):
             winner = self.game.start_play(
@@ -207,23 +246,26 @@ def parse_args():
     parser.add_argument("--init-model", help="继续训练时加载的初始模型路径")
     parser.add_argument("--board-size", type=int, default=6, help="正方形棋盘边长")
     parser.add_argument("--n-in-row", type=int, default=4, help="获胜所需连子数")
-    parser.add_argument("--learn-rate", type=float, default=2e-3, help="基础学习率")
     parser.add_argument("--temp", type=float, default=1.0, help="自博弈采样温度")
     parser.add_argument("--playouts", type=int, default=500, help="每步 MCTS 模拟次数")
     parser.add_argument("--c-puct", type=float, default=5.0, help="MCTS 探索系数")
+    parser.add_argument("--leaf-batch-size", type=int, default=16)
+    parser.add_argument("--virtual-loss", type=float, default=1.0)
+    parser.add_argument("--play-batch-size", type=int, default=1, help="每次自博弈局数")
     parser.add_argument("--buffer-size", type=int, default=10000, help="经验回放池容量")
     parser.add_argument("--batch-size", type=int, default=512, help="训练批量大小")
-    parser.add_argument("--play-batch-size", type=int, default=1, help="每批自博弈局数")
     parser.add_argument("--epochs", type=int, default=5, help="每批数据训练轮数")
-    parser.add_argument("--kl-target", type=float, default=0.02, help="KL 散度目标值")
-    parser.add_argument("--check-freq", type=int, default=50, help="模型评估间隔批次")
-    parser.add_argument("--game-batch-num", type=int, default=1200, help="总训练批次数")
+    parser.add_argument("--learn-rate", type=float, default=2e-3, help="基础学习率")
     parser.add_argument("--l2-const", type=float, default=1e-4, help="L2 权重衰减系数")
+    parser.add_argument("--kl-target", type=float, default=0.02, help="KL 散度目标值")
     parser.add_argument("--channels", type=int, default=64, help="残差网络特征通道数")
     parser.add_argument("--num-blocks", type=int, default=2, help="残差块数量")
+    parser.add_argument("--check-freq", type=int, default=50, help="模型评估间隔批次")
+    parser.add_argument("--game-batch-num", type=int, default=1200, help="自博弈总局数，总训练批次数")
     parser.add_argument("--evaluate-games", type=int, default=20, help="每次候选网络与 best 网络的评估对局数")
     parser.add_argument("--update-threshold", type=float, default=0.55, help="更新 best 所需的候选网络胜率，必须严格超过该值")
     parser.add_argument("--device", default="cpu", help="计算设备，例如 cpu 或 cuda:0")
+    parser.add_argument("--is-MCTS-simple", type=bool, default=True, help="是否用简化版本MCTS")
     parser.add_argument("--current-model", default="current_policy.model", help="候选模型保存路径")
     parser.add_argument("--best-model", default="best_policy.model", help="best 模型保存路径")
     return parser.parse_args()

@@ -153,6 +153,7 @@ class PolicyValueNet:
         legal_positions = board.availables
 
         # 输入给网络的维度是 (batch_size, 4, board_size, board_size)
+        # ascontiguousarray将数组连续内存存放
         current_state = np.ascontiguousarray(
             board.current_state().reshape(
                 -1, 4, self.board_size, self.board_size
@@ -168,6 +169,31 @@ class PolicyValueNet:
         # 过滤可落子的位置
         legal_probs = zip(legal_positions, act_probs[legal_positions])
         return legal_probs, value.item()
+
+    def policy_value_fn_batch(self, boards):
+        """
+        批量处理版本的 policy_value_fn
+
+        返回值每一项均为(合法动作及概率列表, 当前玩家视角价值)
+        接口供批量 MCTS 使用
+        """
+        if not boards:
+            return []
+
+        states = np.ascontiguousarray(
+            np.asarray([board.current_state() for board in boards])
+        )
+        action_probs, values = self.policy_value(states)
+
+        results = []
+        for board, probs, value in zip(boards, action_probs, values):
+            # 过滤可落子的位置
+            legal_positions = board.availables
+            legal_probs = [
+                (action, float(probs[action])) for action in legal_positions
+            ]
+            results.append((legal_probs, float(value.item())))
+        return results
 
     def train_step(self, state_batch, mcts_probs, winner_batch):
         """执行一次梯度更新"""
