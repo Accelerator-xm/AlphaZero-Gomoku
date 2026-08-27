@@ -84,6 +84,8 @@ flowchart TD
     └── paper3_alphaZero.md       # AlphaZero 论文笔记
 ```
 
+模型可以自己训练，release里有一版我训练的，不一定是性能最好的，本库只是为了学习论文的训练过程，而不是追求模型能力
+
 ## 环境准备
 
 建议使用 Python 3.10 或更高版本。
